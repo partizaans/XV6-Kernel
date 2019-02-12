@@ -7,6 +7,7 @@
 #include "x86.h"
 
 static void startothers(void);
+static void groupname(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
 extern char end[]; // first address after kernel loaded from ELF file
@@ -43,8 +44,16 @@ mpenter(void)
 {
   switchkvm();
   seginit();
+  groupname();
   lapicinit();
   mpmain();
+}
+
+// Print OS-LAB group name on boot.
+static void
+groupname(void)
+{
+  cprintf("============ Group 7 ============\n");
 }
 
 // Common CPU setup code.
