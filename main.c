@@ -49,7 +49,7 @@ mpenter(void)
   mpmain();
 }
 
-// Print OS-LAB group name on boot.
+// Print group members name on boot.
 static void
 groupname(void)
 {
