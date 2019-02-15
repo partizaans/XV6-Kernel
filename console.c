@@ -125,6 +125,8 @@ panic(char *s)
 
 //PAGEBREAK: 50
 #define BACKSPACE 0x100
+#define KEY_UP 0xE2
+#define KEY_DN 0xE3
 #define CRTPORT 0x3d4
 static ushort *crt = (ushort*)P2V(0xb8000);  // CGA memory
 
@@ -179,14 +181,70 @@ consputc(int c)
 }
 
 #define INPUT_BUF 128
+#define HISTORY_SIZE 6
 struct {
   char buf[INPUT_BUF];
   uint r;  // Read index
   uint w;  // Write index
   uint e;  // Edit index
+  uint hw; // History write index
+  uint hr; // History read index
+  char history[HISTORY_SIZE][INPUT_BUF];
 } input;
 
 #define C(x)  ((x)-'@')  // Control-x
+
+
+void
+killline()
+{
+  while(input.e != input.w &&
+        input.buf[(input.e-1) % INPUT_BUF] != '\n'){
+    input.e--;
+    consputc(BACKSPACE);
+  }
+}
+
+void
+writehistory()
+{
+  int i;
+  int is_different = 0;
+  for (i = input.r; i < input.e-1; ++i) {
+    if (input.history[(input.hw + HISTORY_SIZE - 1) % HISTORY_SIZE][i - input.r] != input.buf[i]) {
+      is_different = 1;
+      break;
+    }
+  }
+  if(!is_different)
+    return;
+  for(i = 0; i < INPUT_BUF; ++i)
+    input.history[input.hw][i] = 0;
+  for (i = input.r; i < input.e-1; ++i)
+    input.history[input.hw][i-input.r] = input.buf[i];
+  input.hw = (input.hw + 1) % HISTORY_SIZE;
+  input.hr = input.hw;
+}
+
+void
+readhistory(int isgoingup)
+{
+  int i;
+  int delta_iter = (isgoingup) ? HISTORY_SIZE - 1 : 1;
+  input.hr = (input.hr + delta_iter) % HISTORY_SIZE;
+  if(input.history[input.hr][0] && input.hr != input.hw) {
+    killline();
+    for (i = input.r; input.history[input.hr][i - input.r]; i++) {
+      input.buf[i] = input.history[input.hr][i - input.r];
+      consputc(input.buf[i]);
+      input.e++;
+    }
+  }
+  else if(!isgoingup && input.hr == input.hw)
+    killline();
+  else
+    input.hr = (input.hr + HISTORY_SIZE - delta_iter) % HISTORY_SIZE;
+}
 
 void
 consoleintr(int (*getc)(void))
@@ -201,11 +259,7 @@ consoleintr(int (*getc)(void))
       doprocdump = 1;
       break;
     case C('U'):  // Kill line.
-      while(input.e != input.w &&
-            input.buf[(input.e-1) % INPUT_BUF] != '\n'){
-        input.e--;
-        consputc(BACKSPACE);
-      }
+      killline();
       break;
     case C('H'): case '\x7f':  // Backspace
       if(input.e != input.w){
@@ -214,11 +268,18 @@ consoleintr(int (*getc)(void))
       }
       break;
     default:
-      if(c != 0 && input.e-input.r < INPUT_BUF){
+      if(c == KEY_UP){
+        readhistory(1);
+      }
+      else if(c == KEY_DN){
+        readhistory(0);
+      }
+      else if(c != 0 && input.e-input.r < INPUT_BUF){
         c = (c == '\r') ? '\n' : c;
         input.buf[input.e++ % INPUT_BUF] = c;
         consputc(c);
         if(c == '\n' || c == C('D') || input.e == input.r+INPUT_BUF){
+          writehistory();
           input.w = input.e;
           wakeup(&input.r);
         }
