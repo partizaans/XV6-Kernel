@@ -218,6 +218,8 @@ writehistory()
   }
   if(!is_different)
     return;
+  if(input.buf[input.r]=='\n')
+    return;
   for(i = 0; i < INPUT_BUF; ++i)
     input.history[input.hw][i] = 0;
   for (i = input.r; i < input.e-1; ++i)
