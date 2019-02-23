@@ -232,6 +232,10 @@ readhistory(int isgoingup)
   int i;
   int delta_iter = (isgoingup) ? HISTORY_SIZE - 1 : 1;
   input.hr = (input.hr + delta_iter) % HISTORY_SIZE;
+  if(!isgoingup && input.hr == (input.hw+1) % HISTORY_SIZE){
+    input.hr = (input.hr + HISTORY_SIZE - delta_iter) % HISTORY_SIZE;
+    return;
+  }
   if(input.history[input.hr][0] && input.hr != input.hw) {
     killline();
     for (i = input.r; input.history[input.hr][i - input.r]; i++) {
