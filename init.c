@@ -19,9 +19,10 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
-  for(;;){
+  for(int is_first_time=1;;is_first_time=0){
     printf(1, "init: starting sh\n");
-    printf(1,"*******\n Amirhossein Mahmoodi\n Reza Poormeshki\n MohammadMahdi Jahed\n*******\n");
+    if(is_first_time)
+      printf(1,"*******\n Amirhossein Mahmoodi\n Reza Poormeshki\n MohammadMahdi Jahed\n*******\n");
     pid = fork();
     if(pid < 0){
       printf(1, "init: fork failed\n");
