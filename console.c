@@ -203,8 +203,8 @@ void
 writehistory() {
   int i;
   int is_different = 0;
-  for (i = input.r; i < input.e; ++i) {
-    if ((input.history[(input.hw + HISTORY_SIZE - 1) % HISTORY_SIZE][i - input.r] != input.buf[i]) || input.buf[i] == '\n') {
+  for (i = input.r; i < input.e - 1; ++i) {
+    if ((input.history[(input.hw + HISTORY_SIZE - 1) % HISTORY_SIZE][i - input.r] != input.buf[i]) || input.buf[input.r] == '\n') {
       is_different = 1;
       break;
     }
