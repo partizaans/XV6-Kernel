@@ -1,13 +1,17 @@
+#include "spinlock.h"
+
+#ifndef _PROC_H_
+#define _PROC_H_
 // Per-CPU state
 struct cpu {
-  uchar apicid;                // Local APIC ID
-  struct context *scheduler;   // swtch() here to enter scheduler
-  struct taskstate ts;         // Used by x86 to find stack for interrupt
-  struct segdesc gdt[NSEGS];   // x86 global descriptor table
-  volatile uint started;       // Has the CPU started?
-  int ncli;                    // Depth of pushcli nesting.
-  int intena;                  // Were interrupts enabled before pushcli?
-  struct proc *proc;           // The process running on this cpu or null
+    uchar apicid;                // Local APIC ID
+    struct context *scheduler;   // swtch() here to enter scheduler
+    struct taskstate ts;         // Used by x86 to find stack for interrupt
+    struct segdesc gdt[NSEGS];   // x86 global descriptor table
+    volatile uint started;       // Has the CPU started?
+    int ncli;                    // Depth of pushcli nesting.
+    int intena;                  // Were interrupts enabled before pushcli?
+    struct proc *proc;           // The process running on this cpu or null
 };
 
 extern struct cpu cpus[NCPU];
@@ -25,30 +29,41 @@ extern int ncpu;
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
 struct context {
-  uint edi;
-  uint esi;
-  uint ebx;
-  uint ebp;
-  uint eip;
+    uint edi;
+    uint esi;
+    uint ebx;
+    uint ebp;
+    uint eip;
 };
 
-enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+enum procstate {
+    UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE
+};
 
 // Per-process state
 struct proc {
-  uint sz;                     // Size of process memory (bytes)
-  pde_t* pgdir;                // Page table
-  char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
-  int pid;                     // Process ID
-  struct proc *parent;         // Parent process
-  struct trapframe *tf;        // Trap frame for current syscall
-  struct context *context;     // swtch() here to run process
-  void *chan;                  // If non-zero, sleeping on chan
-  int killed;                  // If non-zero, have been killed
-  struct file *ofile[NOFILE];  // Open files
-  struct inode *cwd;           // Current directory
-  char name[16];               // Process name (debugging)
+    uint sz;                     // Size of process memory (bytes)
+    pde_t *pgdir;                // Page table
+    char *kstack;                // Bottom of kernel stack for this process
+    enum procstate state;        // Process state
+    int pid;                     // Process ID
+    struct proc *parent;         // Parent process
+    struct trapframe *tf;        // Trap frame for current syscall
+    struct context *context;     // swtch() here to run process
+    void *chan;                  // If non-zero, sleeping on chan
+    int killed;                  // If non-zero, have been killed
+    struct file *ofile[NOFILE];  // Open files
+    struct inode *cwd;           // Current directory
+    char name[16];               // Process name (debugging)
+    int priority;                // Process priority
+    int lowPriorityTime;         // Running time in low priority
+    int highPriorityTime;        // Running time in high priority
+    int shmem_count;             // The number of shmem that this process has access to
+    void *shmem_access[4];       // Record the pa for each shmem
+    void *ustack;                // Bottom of user stack for this thread
+    struct spinlock sz_lock;      // protecting lock when grow address space
+    int *reference_count;          // reference count for clone threads
+
 };
 
 // Process memory is laid out contiguously, low addresses first:
@@ -56,3 +71,4 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+#endif

@@ -31,6 +31,8 @@ int
 cpuid() {
   return mycpu()-cpus;
 }
+extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
+extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
@@ -539,7 +541,7 @@ procdump(void)
 int
 clone(void (*fcn)(void*), void *arg, void *stack)
 {
-    if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > *(proc->sz)) {
+    if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > proc->sz) {
         return -1;
     }
     int i, pid;

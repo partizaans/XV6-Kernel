@@ -1,3 +1,7 @@
+#ifndef _USER_H_
+#define _USER_H_
+
+
 struct stat;
 struct rtcdate;
 
@@ -61,3 +65,6 @@ int atoi(const char *);
 int thread_create(void (*)(void*), void*);
 
 void thread_pool_init();
+
+
+#endif

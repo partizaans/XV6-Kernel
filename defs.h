@@ -1,3 +1,6 @@
+#ifndef _DEFS_H_
+#define _DEFS_H_
+
 struct buf;
 struct context;
 struct file;
@@ -5,9 +8,9 @@ struct inode;
 struct pipe;
 struct proc;
 struct rtcdate;
-struct spinlock;
 struct sleeplock;
 struct stat;
+struct spinlock;
 struct superblock;
 
 // bio.c
@@ -189,3 +192,4 @@ void            clearpteu(pde_t *pgdir, char *uva);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+#endif // _DEFS_H_
