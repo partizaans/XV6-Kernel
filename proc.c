@@ -532,3 +532,48 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+
+
+int
+clone(void (*fcn)(void*), void *arg, void *stack)
+{
+    if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > *(proc->sz)) {
+        return -1;
+    }
+    int i, pid;
+    struct proc *np;
+
+    // Allocate process.
+    if((np = allocproc()) == 0)
+        return -1;
+
+    // Copy process state from p.
+    np->pgdir = proc->pgdir;
+    np->sz = proc->sz;
+    np->parent = proc;
+    *np->tf = *proc->tf;
+
+    // Clear %eax so that fork returns 0 in the child.
+    np->tf->eax = 0;
+
+    np->ustack = stack;
+    *((uint*)(stack + PGSIZE - sizeof(uint))) = (uint)arg;
+    *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
+    np->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
+    np->tf->eip = (uint)fcn;
+
+    for(i = 0; i < NOFILE; i++)
+        if(proc->ofile[i])
+            np->ofile[i] = filedup(proc->ofile[i]);
+    np->cwd = idup(proc->cwd);
+
+    pid = np->pid;
+    np->state = RUNNABLE;
+    safestrcpy(np->name, proc->name, sizeof(proc->name));
+
+    np->reference_count = proc->reference_count;
+    *(np->reference_count) = *(np->reference_count) + 1;
+    return pid;
+}
