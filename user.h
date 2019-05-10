@@ -33,6 +33,7 @@ char *sbrk(int);
 int sleep(int);
 int uptime(void);
 int clone(void (*)(void*), void*, void*);
+int join(void**);
 
 
 // ulib.c
@@ -63,6 +64,7 @@ int atoi(const char *);
 
 // thread library functions (thread.c)
 int thread_create(void (*)(void*), void*);
+int thread_join(void);
 
 void thread_pool_init();
 

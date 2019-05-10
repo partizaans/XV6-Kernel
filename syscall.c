@@ -84,6 +84,7 @@ argstr(int n, char **pp)
 
 extern int sys_chdir(void);
 extern int sys_clone(void);
+extern int sys_join(void);
 extern int sys_close(void);
 extern int sys_dup(void);
 extern int sys_exec(void);
@@ -110,6 +111,7 @@ static int (*syscalls[])(void) = {
 [SYS_exit]    sys_exit,
 [SYS_wait]    sys_wait,
 [SYS_clone]   sys_clone,
+[SYS_join]    sys_join,
 [SYS_pipe]    sys_pipe,
 [SYS_read]    sys_read,
 [SYS_kill]    sys_kill,

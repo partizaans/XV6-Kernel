@@ -101,3 +101,11 @@ sys_clone(void)
 
     return clone(fcn, arg, stack);
 }
+
+int
+sys_join(void)
+{
+    void **stack;
+    argptr(0, (void*)&stack, sizeof(void**));
+    return join(stack);
+}

@@ -31,7 +31,18 @@ int thread_create(void (*start_routine)(void *), void *arg) {
     for (int i = 0; i < THREAD_POOL_SIZE; ++i)
         if (!threads[i].is_locked)
             return clone(start_routine, arg, threads[i].stack);
-    return 2;
-//    printf("No free thread in pool\n");
+    return -1;
 }
 
+
+int
+thread_join()
+{
+    void* ustack;
+    int thread_id = join(&ustack);
+    if (thread_id != -1) {
+        free(ustack);
+    }
+
+    return thread_id;
+}
