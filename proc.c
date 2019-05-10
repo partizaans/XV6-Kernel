@@ -541,7 +541,7 @@ procdump(void)
 int
 clone(void (*fcn)(void*), void *arg, void *stack)
 {
-    if ((uint)stack % PGSIZE != 0 || (uint)stack + PGSIZE > proc->sz) {
+    if ((uint)stack % PGSIZE != 0) {
         return -1;
     }
     int i, pid;
