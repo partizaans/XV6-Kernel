@@ -14,37 +14,43 @@ struct {
 } threads[THREAD_POOL_SIZE];
 
 void thread_pool_init() {
+    void *stack [5];
     for (int i = 0; i < THREAD_POOL_SIZE; ++i) {
-        void *stack = malloc(PGSIZE * 2);
-        if (!stack) {
+        stack[i] = malloc(PGSIZE * 2);
+        if (!stack[i]) {
             printf(1, "Error: malloc failed\n");
             exit();
         }
-        if ((uint) stack % PGSIZE)
-            stack = stack + (4096 - (uint) stack % PGSIZE);
-        threads[i].stack = stack;
+        if ((uint) stack[i] % PGSIZE)
+            stack[i] = stack[i] + (4096 - (uint) stack[i] % PGSIZE);
+        threads[i].stack = stack[i];
         threads[i].is_locked = 0;
     }
 }
 
 int thread_create(void (*start_routine)(void *), void *arg) {
-    for (int i = 0; i < THREAD_POOL_SIZE; ++i)
-        if (!threads[i].is_locked) {
-            threads[i].is_locked = 1;
-            return clone(start_routine, arg, threads[i].stack);
-        }
-    return -1;
+  void *stack = malloc(PGSIZE*2);
+  if (!stack) {
+    printf(1, "Error: malloc failed\n");
+    exit();
+  }
+
+  if((uint)stack % PGSIZE) {
+    stack = stack + (4096 - (uint)stack % PGSIZE);
+  }
+
+  return clone(start_routine, arg, stack);
+
 }
 
 
 int
-thread_join()
-{
-    void* ustack;
-    int thread_id = join(&ustack);
-    if (thread_id != -1) {
-        free(ustack);
-    }
+thread_join() {
+  void *ustack;
+  int thread_id = join(&ustack);
+  if (thread_id != -1) {
+    free(ustack);
+  }
 
-    return thread_id;
+  return thread_id;
 }

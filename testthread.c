@@ -1,41 +1,44 @@
+/* clone and verify that address space is shared */
 #include "types.h"
-#include "stat.h"
 #include "user.h"
 
+#undef NULL
+#define NULL ((void*)0)
 
-void thread_1(void *arg_ptr) {
-    printf(1, "Is in thread 1\n");
-    exit();
+int ppid;
+#define PGSIZE (4096)
+
+volatile int global = 1;
+
+#define assert(x) if (x) {} else { \
+   printf(1, "%s: %d ", __FILE__, __LINE__); \
+   printf(1, "assert failed (%s)\n", # x); \
+   printf(1, "TEST FAILED\n"); \
+   kill(ppid); \
+   exit(); \
 }
 
+void worker(void *arg_ptr);
 
-void thread_2(void *arg_ptr) {
-    printf(1, "Is in thread 2\n");
-    exit();
-
+int
+main(int argc, char *argv[])
+{
+  ppid = getpid();
+  printf(1, "\n\npid: %d\n\n", ppid);
+  void *stack = malloc(PGSIZE*2);
+  assert(stack != NULL);
+  if((uint)stack % PGSIZE)
+    stack = stack + (4096 - (uint)stack % PGSIZE);
+  int clone_pid = clone(worker, 0, stack);
+//  assert(clone_pid > 0);
+//  while(global != 5);
+  printf(1, "TEST PASSED %d\n", clone_pid);
+  exit();
 }
 
-
-void thread_3(void *arg_ptr) {
-    printf(1, "Is in thread 3\n");
-    exit();
-
-}
-
-int main() {
-    int pid_1;
-    int pid_2;
-    int pid_3;
-    int arg = 101;
-    void *arg_ptr = &arg;
-    pid_1 = thread_create(thread_1, arg_ptr);
-    pid_2 = thread_create(thread_2, arg_ptr);
-    pid_3 = thread_create(thread_3, arg_ptr);
-    printf(1, "pid1: %d\t", pid_1);
-    printf(1, "pid2: %d\t", pid_2);
-    printf(1, "pid3: %d\n", pid_3);
-    thread_join();
-    thread_join();
-    thread_join();
-    return 0;
+void
+worker(void *arg_ptr) {
+  assert(global == 1);
+  global = 5;
+  exit();
 }
