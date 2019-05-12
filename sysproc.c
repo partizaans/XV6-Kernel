@@ -93,13 +93,13 @@ sys_uptime(void)
 int
 sys_clone(void)
 {
-    void (*fcn)(void*), *arg, *stack;
+    void *arg, *stack;
 
-    argptr(0, (void*)&fcn, sizeof(void (*)(void*)));
-    argptr(1, (void*)&arg, sizeof(void*));
-    argptr(2, (void*)&stack, sizeof(void*));
+//    argptr(0, (void*)&fcn, sizeof(void (*)(void*)));
+    argptr(0, (void*)&arg, sizeof(void*));
+    argptr(1, (void*)&stack, sizeof(void*));
 
-    return clone(fcn, arg, stack);
+    return clone( arg, stack);
 }
 
 int
@@ -108,4 +108,14 @@ sys_join(void)
     void **stack;
     argptr(0, (void*)&stack, sizeof(void**));
     return join(stack);
+}
+
+int
+sys_associate(void)
+{
+  void (*fcn)(void*), *arg, *tid;
+  argptr(0, (void*)&tid, sizeof(void*));
+  argptr(1, (void*)&fcn, sizeof(void (*)(void*)));
+  argptr(2, (void*)&arg, sizeof(void*));
+  return associate(tid, fcn, arg);
 }

@@ -123,8 +123,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-int             clone(void (*)(void*), void*, void*);
+int             clone(void*, void*);
 int             join(void**);
+int             associate(int* , void (*)(void*), void*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

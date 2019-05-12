@@ -13,6 +13,8 @@ struct {
     void *stack;
 } threads[THREAD_POOL_SIZE];
 
+
+
 void thread_pool_init() {
     for (int i = 0; i < THREAD_POOL_SIZE; ++i) {
         void *stack = malloc(PGSIZE * 2);
@@ -27,7 +29,9 @@ void thread_pool_init() {
     }
 }
 
-int thread_create(void (*start_routine)(void *), void *arg) {
+int thread_create() {
+  int dummy = 1;
+  void* arg = &dummy;
   void *stack = malloc(PGSIZE*2);
   if (!stack) {
     printf(1, "Error: malloc failed\n");
@@ -37,8 +41,8 @@ int thread_create(void (*start_routine)(void *), void *arg) {
   if((uint)stack % PGSIZE) {
     stack = stack + (4096 - (uint)stack % PGSIZE);
   }
-
-  return clone(start_routine, arg, stack);
+  printf(1, "Creating thread!\n");
+  return clone(arg, stack);
 }
 
 
@@ -52,4 +56,8 @@ thread_join()
     }
 
     return thread_id;
+}
+
+int thread_associate(int*tid, thread_func_t start_routine, void*data) {
+  return associate(tid, start_routine, data);
 }

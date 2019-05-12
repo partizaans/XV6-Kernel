@@ -1,6 +1,7 @@
 #ifndef _USER_H_
 #define _USER_H_
 
+typedef void(*thread_func_t)(void *);
 
 struct stat;
 struct rtcdate;
@@ -32,9 +33,9 @@ int getpid(void);
 char *sbrk(int);
 int sleep(int);
 int uptime(void);
-int clone(void (*)(void*), void*, void*);
+int clone(void*, void*);
 int join(void**);
-
+int associate(int* , void (*)(void*), void*);
 
 // ulib.c
 int stat(const char *, struct stat *);
@@ -63,8 +64,9 @@ int atoi(const char *);
 
 
 // thread library functions (thread.c)
-int thread_create(void (*)(void*), void*);
+int thread_create();
 int thread_join(void);
+int thread_associate(int* , void (*)(void*), void*);
 
 void thread_pool_init();
 

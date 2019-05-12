@@ -11,8 +11,12 @@ struct {
   struct spinlock lock;
   struct proc proc[NPROC];
 } ptable;
+#define THREAD_POOL_SIZE 5
 
 static struct proc *initproc;
+struct proc* threads[THREAD_POOL_SIZE];
+int thread_count_write = 0;
+int thread_count_read = 0;
 
 int nextpid = 1;
 extern void forkret(void);
@@ -31,8 +35,8 @@ int
 cpuid() {
   return mycpu()-cpus;
 }
-extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
-extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
+//extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
+//extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
 
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
@@ -545,7 +549,7 @@ procdump(void)
 
 
 int
-clone(void (*fcn)(void*), void *arg, void *stack)
+clone(void *arg, void *stack)
 {
     struct proc *curproc = myproc();
     if ((uint)stack % PGSIZE != 0) {
@@ -567,11 +571,9 @@ clone(void (*fcn)(void*), void *arg, void *stack)
     // Clear %eax so that fork returns 0 in the child.
     np->tf->eax = 0;
 
-    np->ustack = stack;
-    *((uint*)(stack + PGSIZE - sizeof(uint))) = (uint)arg;
-    *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
+
     np->tf->esp = (uint)stack + PGSIZE - 2 * sizeof(uint);
-    np->tf->eip = (uint)fcn;
+//    np->tf->eip = (uint)fcn;
 
     for(i = 0; i < NOFILE; i++)
         if(curproc->ofile[i])
@@ -579,11 +581,12 @@ clone(void (*fcn)(void*), void *arg, void *stack)
     np->cwd = idup(curproc->cwd);
 
     pid = np->pid;
-    np->state = RUNNABLE;
+    np->state = SLEEPING;
     safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
     np->reference_count = curproc->reference_count;
     *(np->reference_count) = *(np->reference_count) + 1;
+    threads[thread_count_write++] = np;
     return pid;
 }
 
@@ -635,4 +638,16 @@ join(void** stack)
         // Wait for children to exit.  (See wakeup1 call in proc_exit.)
         sleep(curproc, &ptable.lock);  //DOC: wait-sleep
     }
+}
+
+int associate(int* tid, void (*start_routine)(void*), void*data){
+  struct proc* t = threads[thread_count_read++];
+  *tid = t->pid;
+  t->state = RUNNABLE;
+  void* stack = t->ustack;
+  *((uint*)(stack + PGSIZE - sizeof(uint))) = (uint)data;
+  *((uint*)(stack + PGSIZE - 2 * sizeof(uint))) = 0xffffffff;
+  t->tf->eip = (uint)start_routine;
+  cprintf("Associated success-> pid=%d got tid=%d\n", myproc()->pid, t->pid);
+  return 0;
 }
