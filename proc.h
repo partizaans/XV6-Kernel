@@ -14,9 +14,6 @@ struct cpu {
     struct proc *proc;           // The process running on this cpu or null
 };
 
-extern struct cpu *cpu asm("%gs:0");       // &cpus[cpunum()]
-extern struct proc *proc asm("%gs:4");     // cpus[cpunum()].proc
-
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 
