@@ -113,6 +113,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+  // Everytime alloc new proc, initialize its sz_lock
+  initlock(&(p->sz_lock), "proc address space");
+  p->reference_count = (int*)kalloc();
+  *(p->reference_count) = 1;
 
   return p;
 }
@@ -283,20 +287,22 @@ wait(void)
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc)
+      if(p->parent != curproc || p->pgdir == curproc->pgdir)
         continue;
       havekids = 1;
-      if(p->state == ZOMBIE){
+      if(p->state == ZOMBIE && *(p->reference_count) == 1){
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir);
+        p->state = UNUSED;
+        p->highPriorityTime = 0;
+        p->lowPriorityTime = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-        p->state = UNUSED;
         release(&ptable.lock);
         return pid;
       }
@@ -541,6 +547,7 @@ procdump(void)
 int
 clone(void (*fcn)(void*), void *arg, void *stack)
 {
+    struct proc *curproc = myproc();
     if ((uint)stack % PGSIZE != 0) {
         return -1;
     }
@@ -552,10 +559,10 @@ clone(void (*fcn)(void*), void *arg, void *stack)
         return -1;
 
     // Copy process state from p.
-    np->pgdir = proc->pgdir;
-    np->sz = proc->sz;
-    np->parent = proc;
-    *np->tf = *proc->tf;
+    np->pgdir = curproc->pgdir;
+    np->sz = curproc->sz;
+    np->parent = curproc;
+    *np->tf = *curproc->tf;
 
     // Clear %eax so that fork returns 0 in the child.
     np->tf->eax = 0;
@@ -567,15 +574,15 @@ clone(void (*fcn)(void*), void *arg, void *stack)
     np->tf->eip = (uint)fcn;
 
     for(i = 0; i < NOFILE; i++)
-        if(proc->ofile[i])
-            np->ofile[i] = filedup(proc->ofile[i]);
-    np->cwd = idup(proc->cwd);
+        if(curproc->ofile[i])
+            np->ofile[i] = filedup(curproc->ofile[i]);
+    np->cwd = idup(curproc->cwd);
 
     pid = np->pid;
     np->state = RUNNABLE;
-    safestrcpy(np->name, proc->name, sizeof(proc->name));
+    safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
-    np->reference_count = proc->reference_count;
+    np->reference_count = curproc->reference_count;
     *(np->reference_count) = *(np->reference_count) + 1;
     return pid;
 }
@@ -584,7 +591,8 @@ clone(void (*fcn)(void*), void *arg, void *stack)
 int
 join(void** stack)
 {
-    if ((uint) stack + sizeof(uint) > proc->sz) {
+    struct proc *curproc = myproc();
+    if ((uint) stack + sizeof(uint) > curproc->sz) {
         return -1;
     }
 
@@ -596,7 +604,7 @@ join(void** stack)
         // Scan through table looking for zombie children.
         havekids = 0;
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-            if(p->parent != proc || p->pgdir != proc->pgdir)
+            if(p->parent != curproc || p->pgdir != curproc->pgdir)
                 continue;
             havekids = 1;
             if(p->state == ZOMBIE){
@@ -619,12 +627,12 @@ join(void** stack)
         }
 
         // No point waiting if we don't have any children.
-        if(!havekids || proc->killed){
+        if(!havekids || curproc->killed){
             release(&ptable.lock);
             return -1;
         }
 
         // Wait for children to exit.  (See wakeup1 call in proc_exit.)
-        sleep(proc, &ptable.lock);  //DOC: wait-sleep
+        sleep(curproc, &ptable.lock);  //DOC: wait-sleep
     }
 }

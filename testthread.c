@@ -37,5 +37,6 @@ int main() {
     thread_join();
     thread_join();
     thread_join();
+    exit();
     return 0;
 }

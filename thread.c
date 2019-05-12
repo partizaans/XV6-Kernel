@@ -28,12 +28,17 @@ void thread_pool_init() {
 }
 
 int thread_create(void (*start_routine)(void *), void *arg) {
-    for (int i = 0; i < THREAD_POOL_SIZE; ++i)
-        if (!threads[i].is_locked) {
-            threads[i].is_locked = 1;
-            return clone(start_routine, arg, threads[i].stack);
-        }
-    return -1;
+  void *stack = malloc(PGSIZE*2);
+  if (!stack) {
+    printf(1, "Error: malloc failed\n");
+    exit();
+  }
+
+  if((uint)stack % PGSIZE) {
+    stack = stack + (4096 - (uint)stack % PGSIZE);
+  }
+
+  return clone(start_routine, arg, stack);
 }
 
 
