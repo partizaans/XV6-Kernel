@@ -50,12 +50,7 @@ int
 thread_join()
 {
     void* ustack;
-    int thread_id = join(&ustack);
-    if (thread_id != -1) {
-        free(ustack);
-    }
-
-    return thread_id;
+    return join(&ustack);
 }
 
 int thread_associate(int*tid, thread_func_t start_routine, void*data) {
