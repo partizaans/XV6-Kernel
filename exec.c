@@ -16,6 +16,7 @@ exec(char *path, char **argv)
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
+  struct proc oldproc;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
 
@@ -95,17 +96,18 @@ exec(char *path, char **argv)
 
   // Commit to the user image.
   oldpgdir = curproc->pgdir;
+  oldproc = *curproc;
   curproc->pgdir = pgdir;
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
   switchuvm(curproc);
-  freevm(oldpgdir);
+  freevm(oldpgdir, &oldproc);
   return 0;
 
  bad:
   if(pgdir)
-    freevm(pgdir);
+    freevm(pgdir, proc);
   if(ip){
     iunlockput(ip);
     end_op();

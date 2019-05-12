@@ -10,6 +10,12 @@
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
+
+// Shared memory information
+#define SHMEM_PAGE_NUM 4
+int shmem_counter[SHMEM_PAGE_NUM];
+void* shmem_addr[SHMEM_PAGE_NUM];
+
 // Set up CPU's kernel segment descriptors.
 // Run once on entry on each CPU.
 void
@@ -129,7 +135,7 @@ setupkvm(void)
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0) {
-      freevm(pgdir);
+//      freevm(pgdir);
       return 0;
     }
   return pgdir;
@@ -281,18 +287,27 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 // Free a page table and all the physical memory pages
 // in the user part.
 void
-freevm(pde_t *pgdir)
+freevm(pde_t *pgdir, struct proc *p)
 {
   uint i;
+  int j;
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, KERNBASE, 0);
-  for(i = 0; i < NPDENTRIES; i++){
-    if(pgdir[i] & PTE_P){
-      char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
+  // Only deallocate non-shared memory
+  deallocuvm(pgdir, USERTOP - (p->shmem_count + 1) * PGSIZE, 0);
+  // Update shared memory count
+  for(j = 0; j < SHMEM_PAGE_NUM; ++j) {
+    if(p->shmem_access[j] != 0) {
+      shmem_counter[j]--;
+      p->shmem_access[j] = 0;
     }
+  }
+  p->shmem_count = 0;
+// Free page directory table
+  for(i = 0; i < NPDENTRIES; i++){
+    if(pgdir[i] & PTE_P)
+      kfree((char*)PTE_ADDR(pgdir[i]));
   }
   kfree((char*)pgdir);
 }
@@ -313,7 +328,7 @@ clearpteu(pde_t *pgdir, char *uva)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pde_t *pgdir, uint sz, void** old_shmem_access, void** new_shmem_access)
 {
   pde_t *d;
   pte_t *pte;
@@ -337,10 +352,19 @@ copyuvm(pde_t *pgdir, uint sz)
       goto bad;
     }
   }
+
+  for(i = 0; i < SHMEM_PAGE_NUM; ++i) {
+    new_shmem_access[i] = old_shmem_access[i];
+    if(new_shmem_access[i] != 0) {
+      shmem_counter[i]++;
+      if(mappages(d, new_shmem_access[i], PGSIZE, (uint)shmem_addr[i], PTE_W|PTE_U) < 0)
+        goto bad;
+    }
+  }
   return d;
 
 bad:
-  freevm(d);
+  freevm(d, myproc());
   return 0;
 }
 
