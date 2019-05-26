@@ -20,3 +20,9 @@
 #define SYS_link   19
 #define SYS_mkdir  20
 #define SYS_close  21
+#define SYS_setQueue 22
+#define SYS_setTicket 23
+#define SYS_setBurstTime 24
+#define SYS_setPriority 25
+#define SYS_printQueue 26
+#define SYS_printInfos 27

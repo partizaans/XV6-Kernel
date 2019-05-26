@@ -23,6 +23,12 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+void setQueue(int);
+void setTicket(int);
+void setBurstTime(int);
+void setPriority(int);
+void printQueue(void);
+void printInfos(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

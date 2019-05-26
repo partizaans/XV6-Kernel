@@ -199,6 +199,10 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->Queue = curproc->Queue;
+  np->priority = curproc->priority;
+  np->lotteryTicket = curproc->lotteryTicket;
+  np->burstTime = curproc->burstTime;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -311,50 +315,6 @@ wait(void)
   }
 }
 
-//PAGEBREAK: 42
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
-void
-scheduler(void)
-{
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-  
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
-    release(&ptable.lock);
-
-  }
-}
-
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -367,7 +327,6 @@ sched(void)
 {
   int intena;
   struct proc *p = myproc();
-
   if(!holding(&ptable.lock))
     panic("sched ptable.lock");
   if(mycpu()->ncli != 1)
@@ -531,4 +490,208 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+//Project 4
+//PAGEBREAK: 42
+// Per-CPU process scheduler.
+// Each CPU calls scheduler() after setting itselfRR, up.
+// Scheduler never returns.  It loops, doing:
+//  - choose a process to run
+//  - swtch to start running that process
+//  - eventually that process transfers control
+//      via swtch back to the scheduler.
+struct proc* SJF(void){
+  struct proc*p;
+  struct proc*SJFProc = 0;
+  int SJFFound = 0;
+  
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->Queue != SHORTJOBFIRST)
+      continue;
+    if(SJFFound == 0){
+      SJFProc = p;
+      SJFFound = 1;
+    }
+    if(SJFProc->burstTime > p->burstTime)
+      SJFProc = p;
+  }
+  if(SJFFound)
+    return SJFProc;
+  return 0;
+}
+
+struct proc*Priority(void){
+  struct proc*p;
+  struct proc*PriorityProc = 0;
+  int priorityFound = 0;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->Queue != PRIORITY)
+      continue;
+    if(priorityFound == 0){
+      PriorityProc = p;
+      priorityFound = 1;
+    }
+    if(PriorityProc->priority > p->priority)
+      PriorityProc = p;
+  }
+  if(priorityFound)
+    return PriorityProc;
+  return 0;
+}
+
+struct proc* Lottery(void){
+  struct proc*p;
+  struct proc*LotteryProc = 0;
+  int lotteryFound = 0;
+  int ticketSum = 0;
+  int randomTicket = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->Queue != LOTTERY)
+      continue;
+    ticketSum = ticketSum + p->lotteryTicket;
+  }
+  //We find random here;
+  //randomTicket = findRandom(ticketSum);
+  ticketSum = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC] ;p++){
+    if(p->state != RUNNABLE || p->Queue != LOTTERY)
+      continue;
+    ticketSum = ticketSum + p->lotteryTicket;
+    if(ticketSum >= randomTicket){
+      LotteryProc = p;
+      lotteryFound = 1;
+      break;
+    }
+  }
+  if(lotteryFound)
+    return LotteryProc;
+  return 0;
+}
+
+
+void scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+
+  for (;;)
+  {
+    // Enable interrupts on this processor.
+    sti();
+
+    // Loop over process table looking for process to run.
+    acquire(&ptable.lock);
+
+    p = Lottery();
+    if(p == 0)
+      p = SJF();
+    if(p == 0)
+      p = Priority();
+    if(p != 0){
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    }
+    release(&ptable.lock);
+  }
+}
+
+void setQueue(int queue){
+  struct proc*curproc = myproc();
+  acquire(&ptable.lock);
+  curproc->Queue = queue;
+  release(&ptable.lock);
+}
+
+void setTicket(int tickets){
+  struct proc*curproc = myproc();
+  acquire(&ptable.lock);
+  curproc->lotteryTicket = tickets;
+  release(&ptable.lock);
+}
+
+void setBurstTime(int burstTime){
+  struct proc*curproc = myproc();
+  acquire(&ptable.lock);
+  curproc->burstTime = burstTime;
+  release(&ptable.lock);
+}
+
+void setPriority(int priority){
+  struct proc*curproc = myproc();
+  acquire(&ptable.lock);
+  curproc->priority = priority;
+  release(&ptable.lock);
+}
+
+void printQueue(void){
+  struct proc*p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING){
+      if(p->Queue == 0)
+        cprintf("Process %s with pid %d is in Lottery Queue\n", p->name, p->pid);
+      if(p->Queue == 1)
+        cprintf("Process %s with pid %d is in SJF Queue\n", p->name, p->pid);
+      if(p->Queue == 2)
+        cprintf("Process %s with pid %d is in Priority Queue\n", p->name, p->pid);
+    }
+  }
+  release(&ptable.lock);
+}
+
+void printInfos(void){
+  struct proc*p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == 0)
+      continue;
+    if(p->state == RUNNABLE){
+      if(p->Queue == 0)
+        cprintf("Process:%s\tpid:%d\tstate:RUNNABLE\tQueue:Lottery\ttickets:%d\n",p->name,
+        p->pid,p->lotteryTicket);
+      if(p->Queue == 1)
+        cprintf("Process:%s\tpid:%d\tstate:RUNNABLE\tQueue:SJF\tburstTime:%d\n",p->name,
+        p->pid,p->burstTime);
+      if(p->Queue == 2)
+        cprintf("Process:%s\tpid:%d\tstate:RUNNABLE\tQueue:Priority\tPriority:%d\n",p->name,
+        p->pid,p->priority);
+    }
+    if(p->state == RUNNING){
+      if(p->Queue == 0)
+        cprintf("Process:%s\tpid:%d\tstate:RUNNING\tQueue:Lottery\ttickets:%d\n",p->name,
+        p->pid,p->lotteryTicket);
+      if(p->Queue == 1)
+       cprintf("Process:%s\tpid:%d\tstate:RUNNING\tQueue:SJF\tburstTime:%d\n",p->name,
+        p->pid,p->burstTime);
+      if(p->Queue == 2)
+        cprintf("Process:%s\tpid:%d\tstate:RUNNING\tQueue:Priority\tPriority:%d\n",p->name,
+        p->pid,p->priority);
+    }
+    if(p->state == SLEEPING){
+      if(p->Queue == 0)
+        cprintf("Process:%s\tpid:%d\tstate:SLEEPING\tQueue:Lottery\ttickets:%d\n",p->name,
+        p->pid,p->lotteryTicket);
+      if(p->Queue == 1)
+       cprintf("Process:%s\tpid:%d\tstate:SLEEPING\tQueue:SJF\tburstTime:%d\n",p->name,
+       p->pid,p->burstTime);
+      if(p->Queue == 2)
+        cprintf("Process:%s\tpid:%d\tstate:SLEEPING\tQueue:Priority\tPriorty:%d\n",p->name,
+        p->pid,p->priority);
+    }
+  }
+  release(&ptable.lock);
 }

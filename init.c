@@ -11,6 +11,8 @@ int
 main(void)
 {
   int pid, wpid;
+  setQueue(2);
+  setPriority(0);
 
   if(open("console", O_RDWR) < 0){
     mknod("console", 1, 1);

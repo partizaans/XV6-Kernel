@@ -89,3 +89,45 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int sys_setQueue(void){
+  int queue;
+  if(argint(0,&queue))
+    return -1;
+  setQueue(queue);
+  return 0;
+}
+
+int sys_setTicket(void){
+  int tickets;
+  if(argint(0,&tickets))
+    return -1;
+  setTicket(tickets);
+  return 0;
+}
+
+int sys_setBurstTime(void){
+  int burstTime;
+  if(argint(0,&burstTime))
+    return -1;
+  setBurstTime(burstTime);
+  return 0;
+}
+
+int sys_setPriority(void){
+  int priorty;
+  if(argint(0,&priorty))
+    return -1;
+  setPriority(priorty);
+  return 0;
+}
+
+int sys_printQueue(void){
+  printQueue();
+  return 0;
+}
+
+int sys_printInfos(void){
+  printInfos();
+  return 0;
+}

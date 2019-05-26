@@ -120,6 +120,12 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+void            setQueue(int);
+void            setTicket(int);
+void            setBurstTime(int);
+void            setPriority(int);
+void            printQueue(void);
+void            printInfos(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
