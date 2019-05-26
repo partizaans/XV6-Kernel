@@ -29,6 +29,7 @@ void setBurstTime(int);
 void setPriority(int);
 void printQueue(void);
 void printInfos(void);
+void createTime(void);
 
 // ulib.c
 int stat(const char*, struct stat*);

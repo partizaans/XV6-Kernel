@@ -15,10 +15,19 @@ struct {
 static struct proc *initproc;
 
 int nextpid = 1;
+int nextOtherPid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+
+static unsigned long X  = 1;
+int findRandom(int M) {
+    unsigned long a = 1103515245, c = 12345678 * (ticks + 23);
+    X = a * X + c;
+    return ((unsigned int)(X / 65536) % 32768) % M + 1;
+}
 
 void
 pinit(void)
@@ -88,6 +97,9 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->otherPid = nextOtherPid++;
+  p->createdTime = ticks;
+  cprintf("SPECIAL DATA: counter: %d\t time: %d\n", p->otherPid, p->createdTime);
 
   release(&ptable.lock);
 
@@ -552,9 +564,8 @@ struct proc* Lottery(void){
       continue;
     ticketSum = ticketSum + p->lotteryTicket;
   }
-  //We find random here;
-  //randomTicket = findRandom(ticketSum);
-  ticketSum = 0;
+  if (ticketSum > 0)
+    randomTicket = findRandom(ticketSum);
   for(p = ptable.proc; p < &ptable.proc[NPROC] ;p++){
     if(p->state != RUNNABLE || p->Queue != LOTTERY)
       continue;
@@ -694,4 +705,17 @@ void printInfos(void){
     }
   }
   release(&ptable.lock);
+}
+
+
+void createTime(void){
+//    struct proc* p;
+//    acquire(&ptable.lock);
+//    for (p=ptable.proc; p < &ptable.proc[NPROC]; ++p) {
+//        if(p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING)
+//            cprintf("counter: %d\t time: %d\n", p->otherPid, p->createdTime);
+//
+//    }
+//
+//    release(&ptable.lock);
 }

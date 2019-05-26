@@ -17,6 +17,17 @@ void delay(int numberOfClocks)
     }
 }
 
+void amir(void){
+    createTime();
+}
+
+
+void amir_r(void){
+    printInfos();
+}
+
+
+
 int main(void){
     int pid = getpid();
     int queue = LOTTERY;
@@ -71,11 +82,12 @@ int main(void){
     }
     else
     {
-        printInfos();
+        amir();
+//        amir_r();
         int i;
         for (i = 0; i < NCHILD * 3; i++)
             wait();
-        printf(1, "main program wirh pid %d finished\n", getpid());
+        printf(1, "main program with pid %d finished\n", getpid());
         exit();
     }
 }

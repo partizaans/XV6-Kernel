@@ -131,3 +131,8 @@ int sys_printInfos(void){
   printInfos();
   return 0;
 }
+
+int sys_createTime(void){
+    createTime();
+    return 0;
+}

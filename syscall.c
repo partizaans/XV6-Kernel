@@ -109,6 +109,7 @@ extern int sys_setBurstTime(void);
 extern int sys_setPriority(void);
 extern int sys_printQueue(void);
 extern int sys_printInfos(void);
+extern int sys_createTime(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -138,6 +139,7 @@ static int (*syscalls[])(void) = {
 [SYS_setPriority] sys_setPriority,
 [SYS_printQueue] sys_printQueue,
 [SYS_printInfos] sys_printInfos,
+[SYS_createTime] sys_createTime,
 };
 
 void

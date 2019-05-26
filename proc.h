@@ -42,6 +42,7 @@ struct proc {
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
+  int otherPid;                // OS Course pid
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
@@ -54,6 +55,7 @@ struct proc {
   int lotteryTicket;           //For Lottery Scheduler
   int burstTime;               //For SJF Scheduler
   enum schedulingQueue Queue;  //To determine which queue this process is in
+  int createdTime;             //Shows `ticks` on creating the proc
 };
 
 // Process memory is laid out contiguously, low addresses first:

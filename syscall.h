@@ -26,3 +26,4 @@
 #define SYS_setPriority 25
 #define SYS_printQueue 26
 #define SYS_printInfos 27
+#define SYS_createTime 28
